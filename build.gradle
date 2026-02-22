@@ -36,9 +36,16 @@ dependencies {
   implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
   implementation 'org.springframework.boot:spring-boot-starter-webmvc'
   implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+  // ✅ 추가/수정: Actuator는 implementation
+  implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+  // ✅ 추가: Prometheus registry
+  runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+
   implementation 'javax.cache:cache-api'
   implementation 'jakarta.xml.bind:jakarta.xml.bind-api'
-  runtimeOnly 'org.springframework.boot:spring-boot-starter-actuator'
+
   runtimeOnly "org.webjars:webjars-locator-lite:${webjarsLocatorLiteVersion}"
   runtimeOnly "org.webjars.npm:bootstrap:${webjarsBootstrapVersion}"
   runtimeOnly "org.webjars.npm:font-awesome:${webjarsFontawesomeVersion}"
