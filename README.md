@@ -1,20 +1,20 @@
 ## 프로메테우스 그라파나 모니터링 연습
 
-![img.png](img.png)
+![img.png](image/img.png)
 
 - 프로메테우스 매트릭 수집
 
-![img_1.png](img_1.png)
+![img_1.png](image/img_1.png)
 
 - 그라파나로 수집한 매트릭 시각화
 
 ## 트러블 슈팅 1. 트래픽 증대
 
-![img_2.png](img_2.png)
+![img_2.png](image/img_2.png)
 
  - windows powerShell로 임의로 트래픽 증대
 
-![img_3.png](img_3.png)
+![img_3.png](image/img_3.png)
 
 - 그라파나 Explore 쿼리로 확인 결과 19:20분경 트래픽과 지연시간이 증가된 것을 확인
 
@@ -40,31 +40,31 @@ GC pause↑ + CPU↑ + 힙 사용↑
 → 객체 과다 생성/메모리 압박/GC 문제 가능성 ↑
 
 #### cpu 체크
-![img_4.png](img_4.png)
+![img_4.png](image/img_4.png)
 
 process cpu 체크 19:20분경 이상 없음
 
-![img_5.png](img_5.png)
+![img_5.png](image/img_5.png)
 
 system cpu 체크 19:20분경 이상 없음
 
 결과: cpu 문제 말고 다른 문제 파악을 해야함
 #### 특정 엔드포인트 체크
 
-![img_6.png](img_6.png)
+![img_6.png](image/img_6.png)
 
 - 파악 하기 전 엔드 포인트 라벨 확인
 
-![img_8.png](img_8.png)
+![img_8.png](image/img_8.png)
 
 - 특정 엔드포인트에서 많은 요청이 일어나는 것을 확인
 
-![img_9.png](img_9.png)
+![img_9.png](image/img_9.png)
 
 - 이것을 바탕으로 엔드포인트 쿼리를 보내 19:20분에 이상있는지 파악
 - 이상이 있다는 것을 확인 후 코드 확인
 
-![img_10.png](img_10.png)
+![img_10.png](image/img_10.png)
 
 - 코드확인 결과 Thread.sleep(2000);때문에 지연이 일어난 것을 확인
 - Thread.sleep(2000); 메서드 제거 
@@ -73,31 +73,31 @@ system cpu 체크 19:20분경 이상 없음
 ---
 ## 트러블 슈팅 2. 데이터베이스 off
 
-![img_12.png](img_12.png)
+![img_12.png](image/img_12.png)
 - 임의로 데이터베이스 OFF
 
-![img_11.png](img_11.png)
+![img_11.png](image/img_11.png)
 - VETERINARIANS 탭으로 들어가서 데이터 베이스 접속
 - 데이터 베이스 접속이 안되어 Error 탭으로 가는것을 확인
 
 
 #### Grafana info확인
-![img_13.png](img_13.png)
+![img_13.png](image/img_13.png)
  - 쿼리 status를 500대로 확인 해봤을때 17:50 분경 그래프가 튀는 것을 확인
 
-![img_14.png](img_14.png)
+![img_14.png](image/img_14.png)
 - 특정 url에서 그래프가 튀는 것을 확인
 
-![img_15.png](img_15.png)
+![img_15.png](image/img_15.png)
 - 앱로그 확인 문제 발견( Could not open JPA EntityManager for transaction)
 
-![img_16.png](img_16.png)
+![img_16.png](image/img_16.png)
 - 현재 docker에 올라와 있는 컨테이너 확인해 본 결과 postgresql이 올라와 있지 않다는 것을 확인
 
-![img_17.png](img_17.png)
+![img_17.png](image/img_17.png)
 - postgresql을 컨테이너로 올린후 문제 재확인
 
-![img_18.png](img_18.png)
+![img_18.png](image/img_18.png)
 - 정상적으로 해당 url에 들어가지는 것을 확인
 - 2차 트러블 슈팅 종료
 
@@ -105,22 +105,22 @@ system cpu 체크 19:20분경 이상 없음
 ## 트러블 슈팅 3. 커넥션 풀 고갈
 
 #### 초기 설정
-![img_19.png](img_19.png)
+![img_19.png](image/img_19.png)
 - hikariCP max pool을 의도적으로 작게 설정
 
-![img_20.png](img_20.png)
+![img_20.png](image/img_20.png)
 - 의도적으로 커넥션을 붙잡을 컨트롤러 작성
 
 #### 부하 걸기
-![img_22.png](img_22.png)
+![img_22.png](image/img_22.png)
 - powershell에서 해당 url로 부하를 직접 추가
 - 결과를 확인하면 최대 hikari pool을 3으로 잡았기 때문에 커넥션을 놓아주었을때 비로소 true로 전환 되는 것을 볼 수 있음
 
 #### grafana 확인
-![img_21.png](img_21.png)
+![img_21.png](image/img_21.png)
 - 그라파나 500 에러 확인 쿼리 결과(요청 2번돌림) 다음과 같이 특정 시간에 500에러가 치솓는것을 볼 수 있음
 
-![img_23.png](img_23.png)
+![img_23.png](image/img_23.png)
 - 95 퍼센타일(느림 정도 지표) 
 - 최근 1분 동안 각 버킷 카운트가 초당 얼마나 늘었는지 확인
 
@@ -156,16 +156,16 @@ DB/히카리 지표는 멀쩡한데 p95만 뜀
 모든 URI에서 p95가 같이 오르는 편
 JVM/서버 리소스 지표랑 같이 튐
 
-![img_24.png](img_24.png)
+![img_24.png](image/img_24.png)
 - hikari pool이 active 가 몇인지 확인 - active상태인 풀이 3개인 것을 확인
 
-![img_25.png](img_25.png)
+![img_25.png](image/img_25.png)
 - 대기중인 pool이 몇개인지 확인 (pending) 대기중인 pool이 5개가 넘어가는 것을 확인 해 볼 수 있음
 
-![img_26.png](img_26.png)
+![img_26.png](image/img_26.png)
 - 마지막으로 max pool을 확인- 최대 3개인 것을 확인(비정상적)
 
-![img_27.png](img_27.png)
+![img_27.png](image/img_27.png)
 - 마지막으로 앱 로그 확인  
 - ERROR =>HikariPool-1 - Connection is not available, request timed out after 2011ms (total=3, active=3, idle=0, waiting=0)
 
@@ -227,3 +227,4 @@ HikariCP 커넥션 풀 고갈(Connection Pool Exhaustion)
     트랜잭션/쿼리 최적화를 통해 커넥션 점유 시간을 줄여 풀 고갈 가능성을 낮춘다.
     인스턴스 확장 환경에서도 총 커넥션 수를 통제하고(RDS Proxy 등) DB 불안정을 예방한다.
     모니터링 및 알람으로 장애 징후를 조기에 감지하고, 장애 원인을 명확히 분류할 수 있다.
+
