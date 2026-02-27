@@ -69,3 +69,36 @@ system cpu 체크 19:20분경 이상 없음
 - 코드확인 결과 Thread.sleep(2000);때문에 지연이 일어난 것을 확인
 - Thread.sleep(2000); 메서드 제거 
 - 1차 트러블 슈팅 종료
+
+---
+## 트러블 슈팅 2. 데이터베이스 off
+
+![img_12.png](img_12.png)
+- 임의로 데이터베이스 OFF
+
+![img_11.png](img_11.png)
+- VETERINARIANS 탭으로 들어가서 데이터 베이스 접속
+- 데이터 베이스 접속이 안되어 Error 탭으로 가는것을 확인
+
+
+#### Grafana info확인
+![img_13.png](img_13.png)
+ - 쿼리 status를 500대로 확인 해봤을때 17:50 분경 그래프가 튀는 것을 확인
+
+![img_14.png](img_14.png)
+- 특정 url에서 그래프가 튀는 것을 확인
+
+![img_15.png](img_15.png)
+- 앱로그 확인 문제 발견( Could not open JPA EntityManager for transaction)
+
+![img_16.png](img_16.png)
+- 현재 docker에 올라와 있는 컨테이너 확인해 본 결과 postgresql이 올라와 있지 않다는 것을 확인
+
+![img_17.png](img_17.png)
+- postgresql을 컨테이너로 올린후 문제 재확인
+
+![img_18.png](img_18.png)
+- 정상적으로 해당 url에 들어가지는 것을 확인
+- 2차 트러블 슈팅 종료
+
+---
