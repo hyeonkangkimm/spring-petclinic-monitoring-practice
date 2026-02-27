@@ -173,58 +173,57 @@ JVM/서버 리소스 지표랑 같이 튐
 - HikariPool의 max풀 개수와 요청이 안맞아서 timeOut이 발생했다고 확인 할 수 있다.
 
 #### 해결방안
-
 HikariCP 커넥션 풀 고갈(Connection Pool Exhaustion)
-1) 원인 요약
-애플리케이션은 DB 작업 시 HikariCP 커넥션 풀에서 커넥션을 “대여”해 사용한다.
-동시 요청 증가 또는 커넥션 점유 시간이 길어지면(active == max) 풀에서 커넥션을 더 이상 빌릴 수 없어 pending이 증가한다.
-대기 시간이 connectionTimeout을 초과하면 커넥션 대여 실패가 발생하고, 결과적으로 API가 500/timeout으로 실패한다.
-본 이슈는 DB 자체가 다운되지 않아도 발생하며, “DB 장애”가 아니라 “애플리케이션 커넥션 풀 자원 부족” 문제다.
+#### 원인 요약
+    애플리케이션은 DB 작업 시 HikariCP 커넥션 풀에서 커넥션을 “대여”해 사용한다.
+    동시 요청 증가 또는 커넥션 점유 시간이 길어지면(active == max) 풀에서 커넥션을 더 이상 빌릴 수 없어 pending이 증가한다.
+    대기 시간이 connectionTimeout을 초과하면 커넥션 대여 실패가 발생하고, 결과적으로 API가 500/timeout으로 실패한다.
+    본 이슈는 DB 자체가 다운되지 않아도 발생하며, “DB 장애”가 아니라 “애플리케이션 커넥션 풀 자원 부족” 문제다.
 
-2) 애플리케이션(코드/트랜잭션) 개선
-2-1. 트랜잭션 범위 최소화
-@Transactional 구간을 DB 작업에만 한정한다.
-트랜잭션 안에서 다음 작업을 수행하지 않도록 구조를 변경한다:
-외부 API 호출, 파일 업로드, 긴 연산/루프, sleep 등
-효과: 커넥션 점유 시간 감소 → active 지속 시간 단축 → pending 및 timeout 감소
+#### 애플리케이션(코드/트랜잭션) 개선
+    2-1. 트랜잭션 범위 최소화
+    @Transactional 구간을 DB 작업에만 한정한다.
+    트랜잭션 안에서 다음 작업을 수행하지 않도록 구조를 변경한다:
+    외부 API 호출, 파일 업로드, 긴 연산/루프, sleep 등
+    효과: 커넥션 점유 시간 감소 → active 지속 시간 단축 → pending 및 timeout 감소
 
-2-2. 쿼리 수/속도 최적화(N+1 및 느린 쿼리 제거)
-N+1이 발생하는 조회 로직은 fetch join, EntityGraph, DTO projection 등으로 개선한다.
-인덱스 점검 및 느린 쿼리 튜닝을 수행한다.
-효과: 단일 요청이 커넥션을 오래 점유하는 시간을 줄여 풀 고갈 위험을 낮춤
-2-3. 커넥션 누수(반납 누락) 방지
-커넥션 반환 누락 가능성을 감시하기 위해 Hikari leak detection을 활성화한다.
-예: spring.datasource.hikari.leak-detection-threshold=5000
-효과: 코드에서 커넥션이 장시간 반환되지 않는 위치를 로그로 추적 가능
+    2-2. 쿼리 수/속도 최적화(N+1 및 느린 쿼리 제거)    
+    N+1이 발생하는 조회 로직은 fetch join, EntityGraph, DTO projection 등으로 개선한다.
+    인덱스 점검 및 느린 쿼리 튜닝을 수행한다.
+    효과: 단일 요청이 커넥션을 오래 점유하는 시간을 줄여 풀 고갈 위험을 낮춤
+    2-3. 커넥션 누수(반납 누락) 방지
+    커넥션 반환 누락 가능성을 감시하기 위해 Hikari leak detection을 활성화한다.
+    예: spring.datasource.hikari.leak-detection-threshold=5000
+    효과: 코드에서 커넥션이 장시간 반환되지 않는 위치를 로그로 추적 가능
 
-3) HikariCP 설정(튜닝) 개선 
-3-1. pool size 튜닝 원칙
-무작정 maximumPoolSize를 키우는 방식은 멀티 인스턴스 환경에서 DB 연결 폭증을 유발할 수 있으므로 위험하다.
-“DB가 감당 가능한 총 연결 수”를 기준으로 인스턴스당 풀 사이즈를 산정한다.
-총 연결 수 ≈ (애플리케이션 인스턴스 수 × maximumPoolSize)
-3-2. 빠른 실패(Fail-Fast) 설정
-커넥션이 부족할 때 요청이 무한 대기하며 적체되는 것을 막기 위해 connectionTimeout을 짧게 유지한다(예: 1~3초).
-효과: 장애 시 빠르게 감지 및 확산 방지, 대기열 폭증 완화
+#### HikariCP 설정(튜닝) 개선 
+    3-1. pool size 튜닝 원칙
+    무작정 maximumPoolSize를 키우는 방식은 멀티 인스턴스 환경에서 DB 연결 폭증을 유발할 수 있으므로 위험하다.
+    "DB가 감당 가능한 총 연결 수”를 기준으로 인스턴스당 풀 사이즈를 산정한다.
+    총 연결 수 ≈ (애플리케이션 인스턴스 수 × maximumPoolSize)
+    3-2. 빠른 실패(Fail-Fast) 설정
+    커넥션이 부족할 때 요청이 무한 대기하며 적체되는 것을 막기 위해 connectionTimeout을 짧게 유지한다(예: 1~3초).
+    효과: 장애 시 빠르게 감지 및 확산 방지, 대기열 폭증 완화
 
-4) 클라우드(RDS) 환경에서의 운영 개선
-4-1. 멀티 인스턴스 환경의 핵심 리스크
-오토스케일/다중 인스턴스 운영 시, 인스턴스 수가 늘어날수록 DB로 향하는 총 커넥션 수가 선형 증가한다.
-DB의 max_connections 한계를 초과하면 DB 전체가 불안정해질 수 있다.
-4-2. RDS Proxy(또는 PgBouncer) 도입
-앱과 RDS 사이에 RDS Proxy(Postgres면 PgBouncer도 가능)를 두어 커넥션 재사용 및 관리 계층을 추가한다.
-효과:
-인스턴스 증가 시 DB 커넥션 폭증 완화
-커넥션 생성 비용 감소로 지연 감소
-스파이크 트래픽에서 안정성 강화
-4-3. 모니터링/알람 구축
-다음 지표를 기반으로 Grafana/CloudWatch 알람을 설정한다:
-hikaricp_connections_active가 max 근접 상태로 지속
-hikaricp_connections_pending 발생/지속
-HTTP 5xx 증가 및 응답 지연(p95/p99) 상승
-RDS connections/CPU/IOPS/latency 상승, slow query 증가
-효과: “DB 다운”과 “풀 고갈”을 빠르게 구분하고 선제 대응 가능
+#### 클라우드(RDS) 환경에서의 운영 개선
+    4-1. 멀티 인스턴스 환경의 핵심 리스크
+    오토스케일/다중 인스턴스 운영 시, 인스턴스 수가 늘어날수록 DB로 향하는 총 커넥션 수가 선형 증가한다.
+    DB의 max_connections 한계를 초과하면 DB 전체가 불안정해질 수 있다.
+    4-2. RDS Proxy(또는 PgBouncer) 도입
+    앱과 RDS 사이에 RDS Proxy(Postgres면 PgBouncer도 가능)를 두어 커넥션 재사용 및 관리 계층을 추가한다.
+    효과:
+    인스턴스 증가 시 DB 커넥션 폭증 완화
+    커넥션 생성 비용 감소로 지연 감소
+    스파이크 트래픽에서 안정성 강화
+    4-3. 모니터링/알람 구축
+    다음 지표를 기반으로 Grafana/CloudWatch 알람을 설정한다:
+    hikaricp_connections_active가 max 근접 상태로 지속
+    hikaricp_connections_pending 발생/지속
+    HTTP 5xx 증가 및 응답 지연(p95/p99) 상승
+    RDS connections/CPU/IOPS/latency 상승, slow query 증가
+    효과: “DB 다운”과 “풀 고갈”을 빠르게 구분하고 선제 대응 가능
 
-5) 기대 효과
-트랜잭션/쿼리 최적화를 통해 커넥션 점유 시간을 줄여 풀 고갈 가능성을 낮춘다.
-인스턴스 확장 환경에서도 총 커넥션 수를 통제하고(RDS Proxy 등) DB 불안정을 예방한다.
-모니터링 및 알람으로 장애 징후를 조기에 감지하고, 장애 원인을 명확히 분류할 수 있다.
+#### 기대 효과
+    트랜잭션/쿼리 최적화를 통해 커넥션 점유 시간을 줄여 풀 고갈 가능성을 낮춘다.
+    인스턴스 확장 환경에서도 총 커넥션 수를 통제하고(RDS Proxy 등) DB 불안정을 예방한다.
+    모니터링 및 알람으로 장애 징후를 조기에 감지하고, 장애 원인을 명확히 분류할 수 있다.
