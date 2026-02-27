@@ -37,11 +37,15 @@ dependencies {
   implementation 'org.springframework.boot:spring-boot-starter-webmvc'
   implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-  // ✅ 추가/수정: Actuator는 implementation
   implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
-  // ✅ 추가: Prometheus registry
   runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+
+  compileOnly 'org.projectlombok:lombok'
+  annotationProcessor 'org.projectlombok:lombok'
+
+  testCompileOnly 'org.projectlombok:lombok'
+  testAnnotationProcessor 'org.projectlombok:lombok'
 
   implementation 'javax.cache:cache-api'
   implementation 'jakarta.xml.bind:jakarta.xml.bind-api'
