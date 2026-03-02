@@ -256,7 +256,7 @@ HikariCP 커넥션 풀 고갈(Connection Pool Exhaustion)
 
 ![img_33.png](image/img_33.png)
 - PID먼저 확인 후 대량누수인지 GC가 돌지 않는 문제인지 파악
-- 
+
 ![img_34.png](image/img_34.png)
 - 힙을 잡아먹고 있는게 BYTE배열인 것을 확인
 - 추가로 현재 URL을 요청하지 않았음에도 힙을 잡아먹고 있다는 것을 미루어 보아 GC문제인것으로 특정 할 수 있음
