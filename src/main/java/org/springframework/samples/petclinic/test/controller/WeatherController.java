@@ -25,7 +25,7 @@ public class WeatherController {
 		return weatherService.weatherProtected();
 	}
 
-	// “외부가 느려진 상황”을 통제해서 재현(요청 지연 주입)
+	// 외부가 느려진 상황을 통제해서 재현
 	@GetMapping("/raw-delay")
 	public String rawDelay(@RequestParam(defaultValue = "2000") long delayMs) throws InterruptedException {
 		Thread.sleep(delayMs);

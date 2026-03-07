@@ -278,6 +278,82 @@ HikariCP 커넥션 풀 고갈(Connection Pool Exhaustion)
 - 스크립트로 확인 결과 BYTE가 10MB 수준으로 내려간 것을 확인
 
 #### 트러블슈팅 종료
+
 ---
+## 트러블슈팅 5. 외부 api 호출 지연
 
+### 초기 세팅
+![img_40.png](image/img_40.png)
+ - weather에 관련된 api 호출 Service , Controller , Config 추가
 
+![img_41.png](image/img_41.png)
+- 컨트롤러에서는 정상처리와 비정상 처리를 하여 에러를 표현
+  - **/debug/weather/raw**
+  - 기본 외부 호출(OpenWeatherMap을 그대로 호출해서 결과를 반환)
+  -  **/debug/weather/raw-delay?delayMs=2000**
+  -  컨트롤러에서 /debug/weather/raw-delay?delayMs=2000 으로 임의로 느려지게 조작
+  - **/debug/weather/protected**
+  - 외부 호출 + 보호 적용(Timeout/서킷브레이커/fallback)
+  - 외부 장애가 있어도 우리 API가 오래 붙잡히지 않게 하기
+  - **/debug/weather/protected-delay?delayMs=2000**
+  - 외부가 느려졌다고 가정(지연 주입) + 보호 적용
+
+**raw = 외부 호출 기본**
+
+**raw-delay = 외부 지연 상황을 만들어서 “문제(지연 전파)”를  보여줌**
+
+**protected = 방어 적용 버전(해결 버전)**
+
+**protected-delay = 지연 상황에서도 방어가 “전파 차단”하는지 검증(딜레이가 있는 상태에서 해결 방안)**
+
+### 트러블 슈팅 시작
+![img_42.png](image/img_42.png)
+- /debug/weather/raw-delay?delayMs=2000에 부하 걸기
+- 기대효과 : 기대: 응답이 2초 이상 걸림(외부 호출 지연이 그대로 전파)
+
+![img_43.png](image/img_43.png)
+- 그라파나로 해당 url의 요청량 확인
+
+![img_44.png](image/img_44.png)
+- P99(지연구간 지표)를 확인해보면 해당 url에 2초정도 지연이 발생하는것을 확인 할 수있음
+- 여기서 만들 수 있는 가설
+- 1.api문제 2.cpu문제 3.db문제
+- CPU 문제면 process/system cpu가 같이 튐
+- DB 문제면 hikari pending/timeout, DB 에러 로그가 같이 튐
+- 외부 API 문제면:
+특정 URI만 p99 급증
+CPU/DB/Hikari는 상대적으로 안정
+로그에서 외부 호출 timeout/지연/실패가 보임
+
+![img_45.png](image/img_45.png)
+- 그라파나 Explore 쿼리 확인 결과 56분에 튈때 프로세스는 튀지 않는 것을 확인
+- cpu 제외
+
+![img_46.png](image/img_46.png)
+- HikariCP Pool도 튀지 않은 것을 확인
+- 풀고갈 , db커넥션 문제도 아닌것을 확인 제외
+
+![img_47.png](image/img_47.png)
+- 특정 url의 요청일 때만 튀는 것을 확인
+- api 요청 딜레이 확인 필요
+
+### 해결 방안
+**기존에 만들어두었던 protected api사용(안만들었다면 만들어야함)**
+![img_48.png](image/img_48.png)
+- 딜레이가 걸리는 상황에서 만들어두었던 timeout정책을 사용하여 시간이 오래 걸릴시 최대 1초 정책이 들어간 protected api사용
+
+![img_50.png](image/img_50.png)
+- timeOut을 걸어놓았기때문에 일정 시간이 지나면 제한이 걸린다는 것을 확인 가능하다.
+
+#### 반면 
+![img_51.png](image/img_51.png)
+- 다음과 같이 기존 딜레이 즉 타임아웃 제한을 걸어두지 않았다면
+
+![img_49.png](image/img_49.png)
+- y축 그래프가 몹시 올라가는 것을 볼 수 있음
+
+따라서 api 요청을 하는 로직을 작성한다면 이러한 타임아웃을 꼭 걸어주어야함
+
+**트러블 슈팅 종료**
+
+---
