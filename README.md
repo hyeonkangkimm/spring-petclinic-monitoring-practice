@@ -342,6 +342,9 @@ CPU/DB/Hikari는 상대적으로 안정
 ![img_48.png](image/img_48.png)
 - 딜레이가 걸리는 상황에서 만들어두었던 timeout정책을 사용하여 시간이 오래 걸릴시 최대 1초 정책이 들어간 protected api사용
 
+![img_52.png](image/img_52.png)
+- 타임아웃 정책이 들어간 url은 다음과 같은 오류를 내보냄
+
 ![img_50.png](image/img_50.png)
 - timeOut을 걸어놓았기때문에 일정 시간이 지나면 제한이 걸린다는 것을 확인 가능하다.
 
