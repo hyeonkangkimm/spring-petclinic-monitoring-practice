@@ -1,4 +1,4 @@
-package org.springframework.samples.petclinic.test;
+package org.springframework.samples.petclinic.test.controller;
 
 import org.springframework.web.bind.annotation.*;
 
@@ -34,4 +34,5 @@ public class LeakController {
 		LEAK.clear();
 		return "cleared";
 	}
+
 }

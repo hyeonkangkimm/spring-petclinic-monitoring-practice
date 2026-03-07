@@ -1,4 +1,5 @@
-package org.springframework.samples.petclinic.test;
+package org.springframework.samples.petclinic.test.controller;
+
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,4 +18,5 @@ public class PoolTestController {
 		Thread.sleep(ms); // 트랜잭션 유지
 		return "held " + ms;
 	}
+
 }

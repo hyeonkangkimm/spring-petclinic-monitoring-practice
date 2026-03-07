@@ -30,6 +30,16 @@ ext.webjarsLocatorLiteVersion = "1.1.2"
 ext.webjarsFontawesomeVersion = "4.7.0"
 ext.webjarsBootstrapVersion = "5.3.8"
 
+/**
+ * ✅ Spring Cloud BOM 추가 (버전 관리를 위해 필수)
+ * Boot 4.x 호환 라인 기준으로 맞춰야 함.
+ */
+dependencyManagement {
+  imports {
+    mavenBom "org.springframework.cloud:spring-cloud-dependencies:2025.1.1"
+  }
+}
+
 dependencies {
   implementation 'org.springframework.boot:spring-boot-starter-cache'
   implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -38,12 +48,10 @@ dependencies {
   implementation 'org.springframework.boot:spring-boot-starter-validation'
 
   implementation 'org.springframework.boot:spring-boot-starter-actuator'
-
   runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 
   compileOnly 'org.projectlombok:lombok'
   annotationProcessor 'org.projectlombok:lombok'
-
   testCompileOnly 'org.projectlombok:lombok'
   testAnnotationProcessor 'org.projectlombok:lombok'
 
@@ -53,11 +61,14 @@ dependencies {
   runtimeOnly "org.webjars:webjars-locator-lite:${webjarsLocatorLiteVersion}"
   runtimeOnly "org.webjars.npm:bootstrap:${webjarsBootstrapVersion}"
   runtimeOnly "org.webjars.npm:font-awesome:${webjarsFontawesomeVersion}"
+
   runtimeOnly 'com.github.ben-manes.caffeine:caffeine'
   runtimeOnly 'com.h2database:h2'
   runtimeOnly 'com.mysql:mysql-connector-j'
   runtimeOnly 'org.postgresql:postgresql'
+
   developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
   testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
   testImplementation 'org.springframework.boot:spring-boot-starter-restclient-test'
   testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
@@ -65,8 +76,21 @@ dependencies {
   testImplementation 'org.springframework.boot:spring-boot-docker-compose'
   testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
   testImplementation 'org.testcontainers:testcontainers-mysql'
+
   checkstyle "io.spring.javaformat:spring-javaformat-checkstyle:${springJavaformatCheckstyleVersion}"
   checkstyle "com.puppycrawl.tools:checkstyle:${checkstyleVersion}"
+
+  // ✅ .env 로딩
+  implementation 'me.paulschwarz:spring-dotenv:4.0.0'
+
+  // ✅ 외부 API 호출(WebClient)
+  implementation "org.springframework.boot:spring-boot-starter-webflux"
+
+  // ✅ Boot4에서 AOP 스타터(기존 aop 대신 aspectj)
+  implementation "org.springframework.boot:spring-boot-starter-aspectj"
+
+  // ✅ Circuit Breaker (Spring Cloud + Resilience4j)
+  implementation "org.springframework.cloud:spring-cloud-starter-circuitbreaker-reactor-resilience4j"
 }
 
 tasks.named('test') {
