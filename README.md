@@ -362,3 +362,110 @@ CPU/DB/Hikari는 상대적으로 안정
 ---
 
 ## 트러블 슈팅 5. N+1문제
+
+#### N+1 문제는 무엇인가?
+- 연관 데이터를 조회하는 과정에서 1번의 기본 조회 후, 조회된 N개의 데이터마다 추가 쿼리가 반복 실행되는 ORM 성능 문제
+- 데이터 개수 N에 비례해 불필요한 쿼리가 증가하는 성능 저하 현상
+### 초기세팅
+![img_53.png](image/img_53.png)
+- Owner 엔티티 칼럼의 FetchType을 EAGER에서 LAZY로 수정
+
+![img_54.png](image/img_54.png)
+- Pet 엔티티 칼럼의 FetchType을 EAGER에서 LAZY로 수정
+
+- ownerRepository.findAll()은 owner만 먼저 가져오고
+이후 코드에서 owner.getPets()에 접근할 때 owner마다 추가 조회가 발생
+
+![img_57.png](image/img_57.png)
+- 조회용 Dto 생성
+
+![img_58.png](image/img_58.png)
+- 조회용 서비스 생성
+- get요청을 위한 트랜잭션 readOnly 어노테이션을 붙여서 lazy로딩
+
+![img_59.png](image/img_59.png)
+- 서비스 호출 컨트롤러 생성
+
+![img_61.png](image/img_61.png)
+- n+1문제를 관찰하기위한 로그 properties 설정 추가
+
+#### 데이터 넣기
+![img_55.png](image/img_55.png)
+owners , 각 owner마다 pet 데이터 삽입
+
+![img_56.png](image/img_56.png)
+수동 삽입으로 인한 시퀀스 맞추기 작업
+
+#### 트러블 슈팅 시작
+
+![img_60.png](image/img_60.png)
+- 단건조회 결과 정상작동 하는 것을 확인 할 수 있음
+
+![img_62.png](image/img_62.png)
+- 설정해두었던 로그를 확인해보면 n+1 문제가 생긴다는 것을 확인 할 수 있음
+- 지금은 단건 조회라 n+1문제가 체감이 안되지만 트래픽이 많이 몰리면 어떻게 되는지 확인
+
+![img_63.png](image/img_63.png)
+ - 부하 스크립트 사용
+
+![img_66.png](image/img_66.png)
+- 응답시간지연이 큰 특정 url을 확인
+- 비정상적으로 하나의 특정 url(노란색)이 치솓는것을 볼 수 있음
+- 문제상황인지
+
+![img_67.png](image/img_67.png)
+- 이 요청이 단순히 요청이 늘어나서 응답 지연이 늘어난 것인지 확인
+- 문제 발견 테스트 하는 과정에서 하나의 url에만 부하를 걸었기때문에 
+- 이것이 정말 n+1문제인지 판별 불가
+
+- 따라서 다른 url에도 스크립트를 걸어주어 더 큰 부하가 생기는지 테스트해야함
+
+
+![img_68.png](image/img_68.png)
+- 3개의 get요청에 같은 부하를 걸어주어 비교하며 테스트 진행
+
+![img_69.png](image/img_69.png)
+- 그라파나에서 같은 쿼리를 돌려 확인 일단 부하가 많이 걸린 것을 확인 할 수 있다.
+
+![img_70.png](image/img_70.png)
+- 다음과 같이 파란색 그래프 즉 우리가 만들었던 n+1 로직이
+- 다른 url보다 y축 그래프가 0.7 정도로 월등히 높은것을 확인 할 수있음
+- 문제상황인지
+
+![img_71.png](image/img_71.png)
+- 이러한 요청 지연이 서버에러때문인지 확인해보기위해 쿼리를 돌려본 결과
+- 서버 에러는 아닌것을 확인
+
+#### 코드분석
+![img_72.png](image/img_72.png)
+- 서비스 코드를 확인해보니 findAll()을 통해 n+1문제가 일어나는 것을 확인
+
+
+### 해결방안
+![img_73.png](image/img_73.png)
+- 리포지토리 코드를 jpa에서 제공하는 findAll()메서드가 아닌 fetchJoin메서드 추가
+
+![img_74.png](image/img_74.png)
+- 서비스 코드에서 이 메서드를 사용하도록 수정
+
+![img_75.png](image/img_75.png)
+- 컨트롤러 수정
+
+fetchJoin말고 @EntityGraph 사용해도 무방하다.
+
+
+
+#### 성능 테스트
+
+![img_76.png](image/img_76.png)
+- 같은 부하를 걸어준다.
+
+![img_77.png](image/img_77.png)
+- 부하 확인
+
+![img_78.png](image/img_78.png)
+- 특정 url의 응답지연 p95 쿼리를 확인해보니...
+
+### n+1문제를 해결하면서 해당 url의 부하가 크게 준 것을 확인 할 수 있다.
+
+트러블 슈팅 완료.
